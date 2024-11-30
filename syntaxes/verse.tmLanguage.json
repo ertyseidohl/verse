@@ -1,0 +1,15 @@
+{
+  "scopeName": "source.verse",
+  "name": "Verse",
+  "patterns": [
+    {
+      "match": "\".*?\"",
+      "name": "string.verse"
+    },
+    {
+      "match": "\\b\\d+\\b",
+      "name": "constant.numeric.verse"
+    }
+  ],
+  "uuid": "cc8c4567-33dd-4534-9101-673f7243d80a"
+}

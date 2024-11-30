@@ -1,6 +1,6 @@
 {
-	"name": "lsp-sample-multi-server-client-part",
-	"description": "VSCode part of the Poet language server",
+	"name": "verse-client-part",
+	"description": "VSCode part of the Verse language server",
 	"author": "Erty Seidohl",
 	"license": "MIT",
 	"version": "0.0.1",

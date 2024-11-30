@@ -1,6 +1,6 @@
 {
-	"name": "poet-language-server",
-	"description": "Poet Language Server",
+	"name": "verse-language-server",
+	"description": "Verse Language Server",
 	"version": "0.0.1",
 	"author": "Erty Seidohl",
 	"license": "MIT",
@@ -9,7 +9,7 @@
 	},
 	"repository": {
 		"type": "git",
-		"url": "https://github.com/ertyseidohl/poet"
+		"url": "https://github.com/ertyseidohl/verse"
 	},
 	"dependencies": {
 		"vscode-languageserver": "^7.0.0",
