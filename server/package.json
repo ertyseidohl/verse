@@ -1,0 +1,19 @@
+{
+	"name": "poet-language-server",
+	"description": "Poet Language Server",
+	"version": "0.0.1",
+	"author": "Erty Seidohl",
+	"license": "MIT",
+	"engines": {
+		"node": "*"
+	},
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/ertyseidohl/poet"
+	},
+	"dependencies": {
+		"vscode-languageserver": "^7.0.0",
+		"vscode-languageserver-textdocument": "^1.0.1"
+	},
+	"scripts": {}
+}

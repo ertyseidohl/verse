@@ -1,49 +1,88 @@
 {
   "name": "poet",
-  "displayName": "Poet",
-  "description": "Tools (Including LLM) for Poets",
+  "description": "A multi server Poet language server",
+  "author": "Erty Seidohl",
+  "license": "MIT",
   "version": "0.0.1",
-  "engines": {
-    "vscode": "^1.95.0"
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ertyseidohl/poet"
   },
-  "categories": [
-    "Other"
+  "publisher": "ertyseidohl",
+  "categories": [],
+  "keywords": [
+    "multi-root ready",
+    "poet",
+    "poetry"
   ],
-  "activationEvents": [],
-  "main": "./dist/extension.js",
+  "engines": {
+    "vscode": "^1.52.0"
+  },
+  "main": "./client/out/extension.js",
   "contributes": {
-    "commands": [
+    "languages": [
       {
-        "command": "poet.helloWorld",
-        "title": "Hello World"
+        "id": "poem",
+        "aliases": [
+          "Poem"
+        ],
+        "extensions": [
+          ".poem"
+        ],
+        "configuration": "./language-configuration.json"
       }
-    ]
+    ],
+    "grammars": [
+      {
+        "language": "poem",
+        "scopeName": "source.poem",
+        "path": "./syntaxes/poem.tmLanguage.json"
+      }
+    ],
+    "configuration": {
+      "type": "object",
+      "title": "Multi LSP configuration",
+      "properties": {
+        "lspMultiServerSample.enable": {
+          "scope": "resource",
+          "type": "boolean",
+          "default": true,
+          "description": "Controls the enablement."
+        },
+        "lspMultiServerSample.options": {
+          "scope": "resource",
+          "type": "object",
+          "default": {},
+          "description": "Additional options."
+        },
+        "lspMultiServerSample.trace.server": {
+          "scope": "window",
+          "type": "string",
+          "enum": [
+            "off",
+            "messages",
+            "verbose"
+          ],
+          "default": "off",
+          "description": "Traces the communication between VSCode and the language server."
+        }
+      }
+    }
   },
   "scripts": {
-    "vscode:prepublish": "npm run package",
-    "compile": "npm run check-types && npm run lint && node esbuild.js",
-    "watch": "npm-run-all -p watch:*",
-    "watch:esbuild": "node esbuild.js --watch",
-    "watch:tsc": "tsc --noEmit --watch --project tsconfig.json",
-    "package": "npm run check-types && npm run lint && node esbuild.js --production",
-    "compile-tests": "tsc -p . --outDir out",
-    "watch-tests": "tsc -p . -w --outDir out",
-    "pretest": "npm run compile-tests && npm run compile && npm run lint",
-    "check-types": "tsc --noEmit",
-    "lint": "eslint src",
-    "test": "vscode-test"
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -b",
+    "watch": "tsc -b -w",
+    "lint": "eslint",
+    "postinstall": "cd client && npm install && cd ../server && npm install && cd .."
   },
   "devDependencies": {
-    "@types/vscode": "^1.95.0",
-    "@types/mocha": "^10.0.9",
-    "@types/node": "20.x",
-    "@typescript-eslint/eslint-plugin": "^8.10.0",
-    "@typescript-eslint/parser": "^8.7.0",
+    "@eslint/js": "^9.13.0",
+    "@stylistic/eslint-plugin": "^2.9.0",
+    "@types/mocha": "^5.2.0",
+    "@types/node": "^20",
     "eslint": "^9.13.0",
-    "esbuild": "^0.24.0",
-    "npm-run-all": "^4.1.5",
-    "typescript": "^5.6.3",
-    "@vscode/test-cli": "^0.0.10",
-    "@vscode/test-electron": "^2.4.1"
+    "typescript": "^5.7.2",
+    "typescript-eslint": "^8.16.0"
   }
 }

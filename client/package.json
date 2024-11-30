@@ -1,0 +1,21 @@
+{
+	"name": "lsp-sample-multi-server-client-part",
+	"description": "VSCode part of the Poet language server",
+	"author": "Erty Seidohl",
+	"license": "MIT",
+	"version": "0.0.1",
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/ertyseidohl/poet"
+	},
+	"engines": {
+		"vscode": "^1.52.0"
+	},
+	"scripts": {},
+	"dependencies": {
+		"vscode-languageclient": "^7.0.0"
+	},
+	"devDependencies": {
+		"@types/vscode": "^1.52.0"
+	}
+}
