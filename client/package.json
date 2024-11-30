@@ -6,7 +6,7 @@
 	"version": "0.0.1",
 	"repository": {
 		"type": "git",
-		"url": "https://github.com/ertyseidohl/poet"
+		"url": "https://github.com/ertyseidohl/verse"
 	},
 	"engines": {
 		"vscode": "^1.52.0"

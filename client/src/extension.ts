@@ -50,17 +50,70 @@ function getOuterMostWorkspaceFolder(folder: WorkspaceFolder): WorkspaceFolder {
 export function activate(context: ExtensionContext) {
 
 	const module = context.asAbsolutePath(path.join('server', 'out', 'server.js'));
-	const outputChannel: OutputChannel = Window.createOutputChannel('lsp-multi-server-example');
 
-	Window.showInformationMessage('Install rhyming dictionary');
-	let installRhymingDictionary = Commands.registerCommand('verse.installRhymingDictionary', () => {
+	const outputChannel: OutputChannel = Window.createOutputChannel('Verse', {log: true});
+	outputChannel.show();
+	outputChannel.appendLine('Verse activated.');
+
+	let installRhymingDictionary = Commands.registerCommand('verse.installRhymingDictionary', async () => {
 		Window.showInformationMessage('Installing Rhyming Dictionary...');
+		outputChannel.appendLine('Installing Rhyming Dictionary...');
+		await Workspace.fs.createDirectory(context.globalStorageUri);
+
+		outputChannel.appendLine(`Checking for rhyming dictionary database...`);
+
+		if (context.globalState.get("__RhymingDictionaryInstalled__")) {
+			Window.showInformationMessage('Rhyming dictionary already installed.');
+			outputChannel.appendLine('Rhyming dictionary already installed.');
+			return;
+		}
+
+		outputChannel.appendLine('Checking for rhyming dictionary...');
+		const downloadPath = path.join(context.globalStorageUri.fsPath, 'cmudict-0.7b');
+		const downloadExists = await Promise.resolve(Workspace.fs.stat(Uri.file(downloadPath))).then(() => true).catch(() => false);
+		let rhymingDictionaryText: string;
+		if (downloadExists) {
+			outputChannel.appendLine('Rhyming dictionary already downloaded.');
+			try {
+				rhymingDictionaryText = (await Workspace.fs.readFile(Uri.file(downloadPath))).toString();
+			} catch (err) {
+				outputChannel.appendLine(`Failed to read rhyming dictionary: ${err}`);
+				return;
+			}
+		} else {
+			try {
+				outputChannel.appendLine('Downloading CMU Pronouncing Dictionary...');
+				const rhymingDictionaryResult = await fetch('https://svn.code.sf.net/p/cmusphinx/code/trunk/cmudict/cmudict-0.7b');
+				rhymingDictionaryText = await rhymingDictionaryResult.text();
+				await Workspace.fs.writeFile(Uri.file(downloadPath), Buffer.from(rhymingDictionaryText));
+				outputChannel.appendLine(`Downloaded rhyming dictionary... `);
+			} catch (err) {
+				outputChannel.appendLine(`Failed to download rhyming dictionary: ${err}`);
+				return;
+			}
+		}
+
+		try {
+			outputChannel.appendLine(`Saving rhyming dictionary to database...`);
+			for (const line of rhymingDictionaryText.split('\n')) {
+				if (line.startsWith(';;;') || !line.trim()) {
+					continue;
+				}
+				const [word, phonemes] = line.split('  ');
+				context.globalState.update(word, phonemes);
+			}
+		} catch (err) {
+			outputChannel.appendLine(`Failed to fill database: ${err}`);
+		}
+		context.globalState.update("__RhymingDictionaryInstalled__", true);
+		outputChannel.appendLine(`Rhyming Dictionary installed.`);
+		Window.showInformationMessage('Rhyming Dictionary installed.');
 	});
 	context.subscriptions.push(installRhymingDictionary);
 
 	function didOpenTextDocument(document: TextDocument): void {
 		// We are only interested in language mode text
-		if (document.languageId !== 'plaintext' || (document.uri.scheme !== 'file' && document.uri.scheme !== 'untitled')) {
+		if (document.languageId !== 'verse' || (document.uri.scheme !== 'file' && document.uri.scheme !== 'untitled')) {
 			return;
 		}
 
@@ -73,12 +126,12 @@ export function activate(context: ExtensionContext) {
 			};
 			const clientOptions: LanguageClientOptions = {
 				documentSelector: [
-					{ scheme: 'untitled', language: 'plaintext' }
+					{ scheme: 'untitled', language: 'verse' }
 				],
-				diagnosticCollectionName: 'lsp-multi-server-example',
+				diagnosticCollectionName: 'verse-language-server',
 				outputChannel: outputChannel
 			};
-			defaultClient = new LanguageClient('lsp-multi-server-example', 'LSP Multi Server Example', serverOptions, clientOptions);
+			defaultClient = new LanguageClient('verse-language-server', 'Verse Language Server', serverOptions, clientOptions);
 			defaultClient.start();
 			return;
 		}
@@ -98,13 +151,13 @@ export function activate(context: ExtensionContext) {
 			};
 			const clientOptions: LanguageClientOptions = {
 				documentSelector: [
-					{ scheme: 'file', language: 'plaintext', pattern: `${folder.uri.fsPath}/**/*` }
+					{ scheme: 'file', language: 'verse', pattern: `${folder.uri.fsPath}/**/*` }
 				],
-				diagnosticCollectionName: 'lsp-multi-server-example',
+				diagnosticCollectionName: 'verse-language-server',
 				workspaceFolder: folder,
 				outputChannel: outputChannel
 			};
-			const client = new LanguageClient('lsp-multi-server-example', 'LSP Multi Server Example', serverOptions, clientOptions);
+			const client = new LanguageClient('verse-language-server', 'Verse Language Server', serverOptions, clientOptions);
 			client.start();
 			clients.set(folder.uri.toString(), client);
 		}

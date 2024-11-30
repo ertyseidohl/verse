@@ -1,12 +1,12 @@
 {
-  "name": "poet",
-  "description": "A multi server Poet language server",
+  "name": "verse",
+  "description": "A multi server language server for verse (poetry)",
   "author": "Erty Seidohl",
   "license": "MIT",
   "version": "0.0.1",
   "repository": {
     "type": "git",
-    "url": "https://github.com/ertyseidohl/poet"
+    "url": "https://github.com/ertyseidohl/verse"
   },
   "publisher": "ertyseidohl",
   "categories": [],
