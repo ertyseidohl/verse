@@ -4,7 +4,7 @@
  * ------------------------------------------------------------------------------------------ */
 import * as path from 'path';
 import {
-	workspace as Workspace, window as Window, ExtensionContext, TextDocument, OutputChannel, WorkspaceFolder, Uri
+	workspace as Workspace, commands as Commands, window as Window, ExtensionContext, TextDocument, OutputChannel, WorkspaceFolder, Uri
 } from 'vscode';
 
 import {
@@ -51,6 +51,12 @@ export function activate(context: ExtensionContext) {
 
 	const module = context.asAbsolutePath(path.join('server', 'out', 'server.js'));
 	const outputChannel: OutputChannel = Window.createOutputChannel('lsp-multi-server-example');
+
+	Window.showInformationMessage('Install rhyming dictionary');
+	let installRhymingDictionary = Commands.registerCommand('verse.installRhymingDictionary', () => {
+		Window.showInformationMessage('Installing Rhyming Dictionary...');
+	});
+	context.subscriptions.push(installRhymingDictionary);
 
 	function didOpenTextDocument(document: TextDocument): void {
 		// We are only interested in language mode text

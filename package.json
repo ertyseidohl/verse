@@ -13,6 +13,7 @@
   "keywords": [
     "multi-root ready",
     "poet",
+    "poem",
     "poetry",
     "verse"
   ],
@@ -41,23 +42,32 @@
         "path": "./syntaxes/verse.tmLanguage.json"
       }
     ],
+    "commands": [
+      {
+        "command": "verse.installRhymingDictionary",
+        "title": "Verse: Install Rhyming Dictionary"
+      }
+    ],
+    "activationEvents": [
+      "onCommand:verse.installRhymingDictionary"
+    ],
     "configuration": {
       "type": "object",
       "title": "Multi LSP configuration",
       "properties": {
-        "lspMultiServerSample.enable": {
+        "verseServer.enable": {
           "scope": "resource",
           "type": "boolean",
           "default": true,
           "description": "Controls the enablement."
         },
-        "lspMultiServerSample.options": {
+        "verseServer.options": {
           "scope": "resource",
           "type": "object",
           "default": {},
           "description": "Additional options."
         },
-        "lspMultiServerSample.trace.server": {
+        "verseServer.trace.server": {
           "scope": "window",
           "type": "string",
           "enum": [
@@ -75,6 +85,7 @@
     "vscode:prepublish": "npm run compile",
     "compile": "tsc -b",
     "watch": "tsc -b -w",
+    "watch:tsc": "tsc -b -w",
     "lint": "eslint",
     "postinstall": "cd client && npm install && cd ../server && npm install && cd .."
   },
