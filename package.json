@@ -1,6 +1,6 @@
 {
   "name": "verse",
-  "description": "A multi server language server for verse (poetry)",
+  "description": "A language server for verse (poetry)",
   "author": "Erty Seidohl",
   "license": "MIT",
   "version": "0.0.1",
@@ -26,6 +26,7 @@
       {
         "id": "verse",
         "aliases": [
+          "verse",
           "Verse"
         ],
         "extensions": [
@@ -55,19 +56,19 @@
       "type": "object",
       "title": "Multi LSP configuration",
       "properties": {
-        "verseServer.enable": {
+        "verseLanguageServer.enable": {
           "scope": "resource",
           "type": "boolean",
           "default": true,
           "description": "Controls the enablement."
         },
-        "verseServer.options": {
+        "verseLanguageServer.options": {
           "scope": "resource",
           "type": "object",
           "default": {},
           "description": "Additional options."
         },
-        "verseServer.trace.server": {
+        "verseLanguageServer.trace.server": {
           "scope": "window",
           "type": "string",
           "enum": [
@@ -75,7 +76,7 @@
             "messages",
             "verbose"
           ],
-          "default": "off",
+          "default": "verbose",
           "description": "Traces the communication between VSCode and the language server."
         }
       }
