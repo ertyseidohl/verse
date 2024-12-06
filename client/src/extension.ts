@@ -12,15 +12,17 @@ import {
   OutputChannel,
   WorkspaceFolder,
   Uri,
+  TextDocumentChangeEvent,
 } from "vscode";
 
 import {
   LanguageClient,
   LanguageClientOptions,
   TransportKind,
+  VersionedTextDocumentIdentifier,
 } from "vscode-languageclient/node";
 
-let defaultClient: LanguageClient;
+let languageClient: LanguageClient;
 const clients = new Map<string, LanguageClient>();
 
 let _sortedWorkspaceFolders: string[] | undefined;
@@ -176,16 +178,42 @@ export function activate(context: ExtensionContext) {
       documentSelector: [{ scheme: "untitled", language: "verse" }],
       diagnosticCollectionName: "verseLanguageServer",
       outputChannel: outputChannel,
+      synchronize: {
+        fileEvents: [
+			Workspace.createFileSystemWatcher("**/*.verse"),
+			Workspace.createFileSystemWatcher("**/*.poem")
+		]
+      },
     };
-    defaultClient = new LanguageClient(
+    languageClient = new LanguageClient(
       "verseLanguageServer",
       "Verse Language Server",
       serverOptions,
       clientOptions
     );
-    defaultClient.start();
+    languageClient.start();
     return;
   }
+
+//   function didChangeTextDocument(change: TextDocumentChangeEvent): void {
+//     if (
+//       change.document.languageId !== "verse" ||
+//       (change.document.uri.scheme !== "file" &&
+//         change.document.uri.scheme !== "untitled")
+//     ) {
+//       return;
+//     }
+//     if (change.contentChanges.length === 0) {
+//       return;
+//     }
+//     languageClient.sendNotification("textDocument/didChange", {
+//       textDocument: VersionedTextDocumentIdentifier.create(
+//         change.document.uri.toString(),
+//         change.document.version
+//       ),
+//       contentChanges: change.contentChanges,
+//     });
+//   }
 
   Workspace.onDidOpenTextDocument(didOpenTextDocument);
   Workspace.textDocuments.forEach(didOpenTextDocument);
@@ -198,12 +226,13 @@ export function activate(context: ExtensionContext) {
       }
     }
   });
+//   Workspace.onDidChangeTextDocument(didChangeTextDocument);
 }
 
 export function deactivate(): Thenable<void> {
   const promises: Thenable<void>[] = [];
-  if (defaultClient) {
-    promises.push(defaultClient.stop());
+  if (languageClient) {
+    promises.push(languageClient.stop());
   }
   for (const client of clients.values()) {
     promises.push(client.stop());
