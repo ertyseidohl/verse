@@ -1,17 +1,10 @@
-/* --------------------------------------------------------------------------------------------
- * Copyright (c) Microsoft Corporation. All rights reserved.
- * Licensed under the MIT License. See License.txt in the project root for license information.
- * ------------------------------------------------------------------------------------------ */
 import * as path from "path";
 import {
   workspace as Workspace,
-  commands as Commands,
   window as Window,
   ExtensionContext,
   TextDocument,
   OutputChannel,
-  WorkspaceFolder,
-  Uri,
   TextDocumentChangeEvent,
 } from "vscode";
 
@@ -21,49 +14,10 @@ import {
   ServerOptions,
   TransportKind,
   VersionedTextDocumentIdentifier,
-  ErrorAction,
-  CloseAction,
 } from "vscode-languageclient/node";
 
 let languageClient: LanguageClient;
 const clients = new Map<string, LanguageClient>();
-
-let _sortedWorkspaceFolders: string[] | undefined;
-function sortedWorkspaceFolders(): string[] {
-  if (_sortedWorkspaceFolders === void 0) {
-    _sortedWorkspaceFolders = Workspace.workspaceFolders
-      ? Workspace.workspaceFolders
-          .map((folder) => {
-            let result = folder.uri.toString();
-            if (result.charAt(result.length - 1) !== "/") {
-              result = result + "/";
-            }
-            return result;
-          })
-          .sort((a, b) => {
-            return a.length - b.length;
-          })
-      : [];
-  }
-  return _sortedWorkspaceFolders;
-}
-Workspace.onDidChangeWorkspaceFolders(
-  () => (_sortedWorkspaceFolders = undefined)
-);
-
-function getOuterMostWorkspaceFolder(folder: WorkspaceFolder): WorkspaceFolder {
-  const sorted = sortedWorkspaceFolders();
-  for (const element of sorted) {
-    let uri = folder.uri.toString();
-    if (uri.charAt(uri.length - 1) !== "/") {
-      uri = uri + "/";
-    }
-    if (uri.startsWith(element)) {
-      return Workspace.getWorkspaceFolder(Uri.parse(element))!;
-    }
-  }
-  return folder;
-}
 
 export function activate(context: ExtensionContext) {
   const module = context.asAbsolutePath(
@@ -111,6 +65,7 @@ export function activate(context: ExtensionContext) {
       ],
       diagnosticCollectionName: "verseLanguageServer",
       outputChannel: outputChannel,
+      traceOutputChannel: Window.createOutputChannel('Verse Language Server Trace', "verseLanguageServer"),
       middleware: {
         // Add middleware to validate document changes
         didChange: (event, next) => {
@@ -133,9 +88,11 @@ export function activate(context: ExtensionContext) {
       "verseLanguageServer",
       "Verse Language Server",
       serverOptions,
-      clientOptions
+      clientOptions,
+      true // forceDebug
     );
     languageClient.start();
+    console.log("languageClient started");
     return;
   }
 
@@ -147,9 +104,10 @@ export function activate(context: ExtensionContext) {
     ) {
       return;
     }
-    if (change.contentChanges.length === 0) {
-      return;
-    }
+    // if (change.contentChanges.length === 0) {
+    //   return;
+    // }
+    console.log("Sending textDocument/didChange notification");
     languageClient.sendNotification("textDocument/didChange", {
       textDocument: VersionedTextDocumentIdentifier.create(
         change.document.uri.toString(),

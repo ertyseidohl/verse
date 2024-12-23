@@ -12,16 +12,27 @@ import {
   CompletionItemKind,
   TextDocumentPositionParams,
   TextDocumentSyncKind,
-  type DocumentDiagnosticReport,
+  type DocumentDiagnosticReport
 } from "vscode-languageserver/node";
 
 import { TextDocument } from "vscode-languageserver-textdocument";
+
+import { createRhymeDict, RhymeDict, ExistingDbBehavior } from "./rhyme_dict";
 
 // Create a connection for the server, using Node's IPC as a transport.
 // Also include all preview / proposed LSP features.
 const connection: ProposedFeatures.Connection = createConnection(
   ProposedFeatures.all
 );
+
+// Debug logging function
+function server_log(message: string, ...args: any[]) {
+  // connection.console.log("[SERVER] " + message + "\n" + JSON.stringify(args));
+  console.log("[SERVER] " + message, ...args);
+}
+
+// Create the rhyme dictionary
+let rhymeDict: RhymeDict;
 
 // Create a simple text document manager.
 const documents = new TextDocuments(TextDocument);
@@ -31,11 +42,8 @@ let hasWorkspaceFolderCapability = false;
 let hasDiagnosticRelatedInformationCapability = false;
 let hasDiagnosticRefreshSupport = false;
 
-function server_log(message: string, ...args: any[]) {
-  connection.console.log("[SERVER] " + message + "\n" + JSON.stringify(args));
-}
-
 connection.onInitialize((params: InitializeParams) => {
+  server_log("Connection Initialized", params);
   const capabilities = params.capabilities;
 
   // Does the client support the `workspace/configuration` request?
@@ -128,21 +136,6 @@ connection.onDidChangeConfiguration((change) => {
     });
   }
 });
-
-function getDocumentSettings(resource: string): Thenable<ExampleSettings> {
-  if (!hasConfigurationCapability) {
-    return Promise.resolve(globalSettings);
-  }
-  let result = documentSettings.get(resource);
-  if (!result) {
-    result = connection.workspace.getConfiguration({
-      scopeUri: resource,
-      section: "verseLanguageServer",
-    });
-    documentSettings.set(resource, result);
-  }
-  return result;
-}
 
 // Only keep settings for open documents
 documents.onDidClose((e) => {
@@ -269,41 +262,80 @@ async function validateTextDocument(
 
 // This handler provides the initial list of the completion items.
 connection.onCompletion(
-  (_textDocumentPosition: TextDocumentPositionParams): CompletionItem[] => {
-    // The pass parameter contains the position of the text document in
-    // which code complete got requested. For the example we ignore this
-    // info and always provide the same completion items.
-    return [
-      {
-        label: "TypeScript",
+  async (
+    textDocumentPosition: TextDocumentPositionParams
+  ): Promise<CompletionItem[]> => {
+    const document = documents.get(textDocumentPosition.textDocument.uri);
+    if (!document) {
+      return [];
+    }
+
+    const text = document.getText();
+    if (text === undefined) {
+      return [];
+    }
+
+    const line = textDocumentPosition.position.line;
+    const character = textDocumentPosition.position.character;
+
+    const lines = text.split("\n");
+
+    const lineText = lines[line];
+    const prefix = lineText.slice(0, character);
+    const suffix = lineText.slice(character);
+
+    server_log("Completion request", {
+      line,
+      character,
+      lineText,
+      prefix,
+      suffix,
+    });
+
+    const rhymes: string[][] = await Promise.all(
+      [lines[line - 3], lines[line - 2], lines[line - 1]]
+        .filter((l) => l)
+        .map((l) => l.split(" ").slice(-1)[0])
+        .filter((l) => l)
+        .map((word) => rhymeDict.getRhymes(word))
+    );
+
+    return rhymes.flat().map((word, index) => {
+      return {
+        label: word,
         kind: CompletionItemKind.Text,
-        data: 1,
-      },
-      {
-        label: "JavaScript",
-        kind: CompletionItemKind.Text,
-        data: 2,
-      },
-    ];
+        data: index
+      };
+    });
   }
 );
 
 // This handler resolves additional information for the item selected in
 // the completion list.
 connection.onCompletionResolve((item: CompletionItem): CompletionItem => {
-  if (item.data === 1) {
-    item.detail = "TypeScript details";
-    item.documentation = "TypeScript documentation";
-  } else if (item.data === 2) {
-    item.detail = "JavaScript details";
-    item.documentation = "JavaScript documentation";
-  }
+  item.detail = "TODO detail";
+  item.documentation = "TODO documentation";
   return item;
 });
 
-// Make the text document manager listen on the connection
-// for open, change and close text document events
-documents.listen(connection);
+async function startServer() {
+  server_log("Starting server");
 
-// Listen on the connection
-connection.listen();
+  // Connect to the rhyming dictionary database
+  rhymeDict = await createRhymeDict(server_log, ExistingDbBehavior.IGNORE);
+
+  server_log("Rhyme dictionary created");
+
+  // Make the text document manager listen on the connection
+  // for open, change and close text document events
+  documents.listen(connection);
+
+  // Listen on the connection
+  connection.listen();
+
+  // Debug string
+  server_log("Server started");
+}
+
+
+(async () => await startServer())();
