@@ -43,14 +43,9 @@
         "path": "./syntaxes/verse.tmLanguage.json"
       }
     ],
-    "commands": [
-      {
-        "command": "verse.installRhymingDictionary",
-        "title": "Verse: Install Rhyming Dictionary"
-      }
-    ],
+    "commands": [],
     "activationEvents": [
-      "onCommand:verse.installRhymingDictionary"
+      "onLanguage:verse"
     ],
     "configuration": {
       "type": "object",
@@ -76,7 +71,7 @@
             "messages",
             "verbose"
           ],
-          "default": "verbose",
+          "default": "off",
           "description": "Traces the communication between VSCode and the language server."
         }
       }

@@ -29,9 +29,10 @@ const documents = new TextDocuments(TextDocument);
 let hasConfigurationCapability = false;
 let hasWorkspaceFolderCapability = false;
 let hasDiagnosticRelatedInformationCapability = false;
+let hasDiagnosticRefreshSupport = false;
 
-function server_log(message: string) {
-  connection.console.log("[SERVER] " + message);
+function server_log(message: string, ...args: any[]) {
+  connection.console.log("[SERVER] " + message + "\n" + JSON.stringify(args));
 }
 
 connection.onInitialize((params: InitializeParams) => {
@@ -50,6 +51,8 @@ connection.onInitialize((params: InitializeParams) => {
     capabilities.textDocument.publishDiagnostics &&
     capabilities.textDocument.publishDiagnostics.relatedInformation
   );
+  hasDiagnosticRefreshSupport =
+    !!capabilities.workspace?.diagnostics?.refreshSupport;
 
   const result: InitializeResult = {
     capabilities: {
@@ -111,10 +114,19 @@ connection.onDidChangeConfiguration((change) => {
   } else {
     globalSettings = change.settings.verseLanguageServer || defaultSettings;
   }
-  // Refresh the diagnostics since the `maxNumberOfProblems` could have changed.
-  // We could optimize things here and re-fetch the setting first can compare it
-  // to the existing setting, but this is out of scope for this example.
-  connection.languages.diagnostics.refresh();
+  if (hasDiagnosticRefreshSupport) {
+    connection.languages.diagnostics.refresh();
+  } else {
+    // Manually refresh diagnostics for all open documents
+    documents.all().forEach((document) => {
+      validateTextDocument(document).then((diagnostics) => {
+        connection.sendDiagnostics({
+          uri: document.uri,
+          diagnostics,
+        });
+      });
+    });
+  }
 });
 
 function getDocumentSettings(resource: string): Thenable<ExampleSettings> {
@@ -158,42 +170,79 @@ connection.languages.diagnostics.on(async (params) => {
 // The content of a text document has changed. This event is emitted
 // when the text document first opened or when its content has changed.
 documents.onDidChangeContent(async (change) => {
-  server_log("Received content change event");
-  const diagnostics = await validateTextDocument(change.document);
-  server_log("Sending diagnostics");
-  connection.sendDiagnostics({
-    uri: change.document.uri,
-    version: change.document.version,
-    diagnostics,
-  });
+  try {
+    server_log("Document change detected", {
+      uri: change.document.uri,
+      version: change.document.version,
+    });
+
+    if (!change.document) {
+      server_log("No document in change event");
+      return;
+    }
+
+    const text = change.document.getText();
+    if (text === undefined) {
+      server_log("No text content in document");
+      return;
+    }
+
+    const diagnostics = await validateTextDocument(change.document);
+
+    // Validate diagnostic ranges before sending
+    const validDiagnostics = diagnostics.filter((diagnostic) => {
+      server_log("Validating diagnostic range", diagnostic);
+      const isValid =
+        diagnostic.range &&
+        diagnostic.range.start &&
+        diagnostic.range.end &&
+        typeof diagnostic.range.start.line === "number" &&
+        typeof diagnostic.range.start.character === "number" &&
+        typeof diagnostic.range.end.line === "number" &&
+        typeof diagnostic.range.end.character === "number";
+
+      if (!isValid) {
+        server_log("Invalid diagnostic range detected", diagnostic);
+      }
+      return isValid;
+    });
+
+    if (validDiagnostics.length > 0) {
+      connection.sendDiagnostics({
+        uri: change.document.uri,
+        version: change.document.version,
+        diagnostics: validDiagnostics,
+      });
+    }
+  } catch (error) {
+    server_log("Error in didChange handler", error);
+  }
 });
 
 async function validateTextDocument(
   textDocument: TextDocument
 ): Promise<Diagnostic[]> {
   server_log("Running validation");
-
-  // In this simple example we get the settings for every validate run.
-  const settings = await getDocumentSettings(textDocument.uri);
-
-  // The validator creates diagnostics for all uppercase words length 2 and more
   const text = textDocument.getText();
-  const pattern = /\b[A-Z]{2,}\b/g;
-  let m: RegExpExecArray | null;
-
-  let problems = 0;
   const diagnostics: Diagnostic[] = [];
-  while ((m = pattern.exec(text)) && problems < settings.maxNumberOfProblems) {
-    problems++;
+  const pattern = /\b[A-Z]{2,}\b/g;
+  let match: RegExpExecArray | null;
+
+  while ((match = pattern.exec(text))) {
+    server_log("Match found", match);
     const diagnostic: Diagnostic = {
       severity: DiagnosticSeverity.Warning,
       range: {
-        start: textDocument.positionAt(m.index),
-        end: textDocument.positionAt(m.index + m[0].length),
+        start: textDocument.positionAt(match.index),
+        end: textDocument.positionAt(match.index + match[0].length),
       },
-      message: `${m[0]} is all uppercase.`,
+      message: `${match[0]} is all uppercase.`,
       source: "ex",
     };
+
+    // Log the diagnostic range for debugging
+    server_log(`Diagnostic range: ${JSON.stringify(diagnostic.range)}`);
+
     if (hasDiagnosticRelatedInformationCapability) {
       diagnostic.relatedInformation = [
         {
@@ -214,6 +263,7 @@ async function validateTextDocument(
     }
     diagnostics.push(diagnostic);
   }
+  server_log("Diagnostics complete", diagnostics);
   return diagnostics;
 }
 

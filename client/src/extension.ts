@@ -18,8 +18,11 @@ import {
 import {
   LanguageClient,
   LanguageClientOptions,
+  ServerOptions,
   TransportKind,
   VersionedTextDocumentIdentifier,
+  ErrorAction,
+  CloseAction,
 } from "vscode-languageclient/node";
 
 let languageClient: LanguageClient;
@@ -73,81 +76,6 @@ export function activate(context: ExtensionContext) {
   outputChannel.show();
   outputChannel.appendLine("Verse activated.");
 
-  let installRhymingDictionary = Commands.registerCommand(
-    "verse.installRhymingDictionary",
-    async () => {
-      Window.showInformationMessage("Installing Rhyming Dictionary...");
-      outputChannel.appendLine("Installing Rhyming Dictionary...");
-      await Workspace.fs.createDirectory(context.globalStorageUri);
-
-      outputChannel.appendLine(`Checking for rhyming dictionary database...`);
-
-      if (context.globalState.get("__RhymingDictionaryInstalled__")) {
-        Window.showInformationMessage("Rhyming dictionary already installed.");
-        outputChannel.appendLine("Rhyming dictionary already installed.");
-        return;
-      }
-
-      outputChannel.appendLine("Checking for rhyming dictionary...");
-      const downloadPath = path.join(
-        context.globalStorageUri.fsPath,
-        "cmudict-0.7b"
-      );
-      const downloadExists = await Promise.resolve(
-        Workspace.fs.stat(Uri.file(downloadPath))
-      )
-        .then(() => true)
-        .catch(() => false);
-      let rhymingDictionaryText: string;
-      if (downloadExists) {
-        outputChannel.appendLine("Rhyming dictionary already downloaded.");
-        try {
-          rhymingDictionaryText = (
-            await Workspace.fs.readFile(Uri.file(downloadPath))
-          ).toString();
-        } catch (err) {
-          outputChannel.appendLine(`Failed to read rhyming dictionary: ${err}`);
-          return;
-        }
-      } else {
-        try {
-          outputChannel.appendLine("Downloading CMU Pronouncing Dictionary...");
-          const rhymingDictionaryResult = await fetch(
-            "https://svn.code.sf.net/p/cmusphinx/code/trunk/cmudict/cmudict-0.7b"
-          );
-          rhymingDictionaryText = await rhymingDictionaryResult.text();
-          await Workspace.fs.writeFile(
-            Uri.file(downloadPath),
-            Buffer.from(rhymingDictionaryText)
-          );
-          outputChannel.appendLine(`Downloaded rhyming dictionary... `);
-        } catch (err) {
-          outputChannel.appendLine(
-            `Failed to download rhyming dictionary: ${err}`
-          );
-          return;
-        }
-      }
-
-      try {
-        outputChannel.appendLine(`Saving rhyming dictionary to database...`);
-        for (const line of rhymingDictionaryText.split("\n")) {
-          if (line.startsWith(";;;") || !line.trim()) {
-            continue;
-          }
-          const [word, phonemes] = line.split("  ");
-          context.globalState.update(word, phonemes);
-        }
-      } catch (err) {
-        outputChannel.appendLine(`Failed to fill database: ${err}`);
-      }
-      context.globalState.update("__RhymingDictionaryInstalled__", true);
-      outputChannel.appendLine(`Rhyming Dictionary installed.`);
-      Window.showInformationMessage("Rhyming Dictionary installed.");
-    }
-  );
-  context.subscriptions.push(installRhymingDictionary);
-
   function didOpenTextDocument(document: TextDocument): void {
     // We are only interested in language mode text
     if (
@@ -163,7 +91,7 @@ export function activate(context: ExtensionContext) {
     outputChannel.appendLine(
       `Starting language server for file: ${uri.toString()}`
     );
-    const serverOptions = {
+    const serverOptions: ServerOptions = {
       run: {
         module,
         transport: TransportKind.ipc,
@@ -171,18 +99,34 @@ export function activate(context: ExtensionContext) {
       debug: {
         module,
         transport: TransportKind.ipc,
-        options: { execArgv: ["--nolazy", "--inspect=6009"] },
+        options: {
+          execArgv: ["--nolazy", "--inspect=6009"],
+        },
       },
     };
     const clientOptions: LanguageClientOptions = {
-      documentSelector: [{ scheme: "untitled", language: "verse" }],
+      documentSelector: [
+        { scheme: "file", language: "verse" },
+        { scheme: "untitled", language: "verse" },
+      ],
       diagnosticCollectionName: "verseLanguageServer",
       outputChannel: outputChannel,
-      synchronize: {
-        fileEvents: [
-			Workspace.createFileSystemWatcher("**/*.verse"),
-			Workspace.createFileSystemWatcher("**/*.poem")
-		]
+      middleware: {
+        // Add middleware to validate document changes
+        didChange: (event, next) => {
+          if (!event.document || !event.contentChanges) {
+            outputChannel.appendLine(
+              `Invalid change event: ${JSON.stringify(event)}`
+            );
+            return;
+          }
+          // Ensure document has valid content
+          if (event.document.getText() === undefined) {
+            outputChannel.appendLine("Document has no content");
+            return;
+          }
+          return next(event);
+        },
       },
     };
     languageClient = new LanguageClient(
@@ -195,25 +139,25 @@ export function activate(context: ExtensionContext) {
     return;
   }
 
-//   function didChangeTextDocument(change: TextDocumentChangeEvent): void {
-//     if (
-//       change.document.languageId !== "verse" ||
-//       (change.document.uri.scheme !== "file" &&
-//         change.document.uri.scheme !== "untitled")
-//     ) {
-//       return;
-//     }
-//     if (change.contentChanges.length === 0) {
-//       return;
-//     }
-//     languageClient.sendNotification("textDocument/didChange", {
-//       textDocument: VersionedTextDocumentIdentifier.create(
-//         change.document.uri.toString(),
-//         change.document.version
-//       ),
-//       contentChanges: change.contentChanges,
-//     });
-//   }
+  function didChangeTextDocument(change: TextDocumentChangeEvent): void {
+    if (
+      change.document.languageId !== "verse" ||
+      (change.document.uri.scheme !== "file" &&
+        change.document.uri.scheme !== "untitled")
+    ) {
+      return;
+    }
+    if (change.contentChanges.length === 0) {
+      return;
+    }
+    languageClient.sendNotification("textDocument/didChange", {
+      textDocument: VersionedTextDocumentIdentifier.create(
+        change.document.uri.toString(),
+        change.document.version
+      ),
+      contentChanges: change.contentChanges,
+    });
+  }
 
   Workspace.onDidOpenTextDocument(didOpenTextDocument);
   Workspace.textDocuments.forEach(didOpenTextDocument);
@@ -226,7 +170,7 @@ export function activate(context: ExtensionContext) {
       }
     }
   });
-//   Workspace.onDidChangeTextDocument(didChangeTextDocument);
+  Workspace.onDidChangeTextDocument(didChangeTextDocument);
 }
 
 export function deactivate(): Thenable<void> {
