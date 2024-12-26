@@ -65,7 +65,6 @@ export function activate(context: ExtensionContext) {
       ],
       diagnosticCollectionName: "verseLanguageServer",
       outputChannel: outputChannel,
-      traceOutputChannel: Window.createOutputChannel('Verse Language Server Trace', "verseLanguageServer"),
       middleware: {
         // Add middleware to validate document changes
         didChange: (event, next) => {
@@ -108,13 +107,18 @@ export function activate(context: ExtensionContext) {
     //   return;
     // }
     console.log("Sending textDocument/didChange notification");
-    languageClient.sendNotification("textDocument/didChange", {
-      textDocument: VersionedTextDocumentIdentifier.create(
-        change.document.uri.toString(),
-        change.document.version
-      ),
-      contentChanges: change.contentChanges,
-    });
+    try {
+      languageClient.sendNotification("textDocument/didChange", {
+        textDocument: VersionedTextDocumentIdentifier.create(
+          change.document.uri.toString(),
+          change.document.version
+        ),
+        contentChanges: change.contentChanges,
+      });
+    } catch (err) {
+      console.log("Error sending textDocument/didChange notification");
+      throw err;
+    }
   }
 
   Workspace.onDidOpenTextDocument(didOpenTextDocument);
