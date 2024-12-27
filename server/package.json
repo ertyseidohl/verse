@@ -12,7 +12,9 @@
 		"url": "https://github.com/ertyseidohl/verse"
 	},
 	"dependencies": {
+		"@google/generative-ai": "^0.21.0",
 		"sqlite": "^5.1.1",
+		"sqlite3": "^5.1.7",
 		"vscode-languageserver": "^9.0.1",
 		"vscode-languageserver-textdocument": "^1.0.12"
 	},

@@ -1,0 +1,1 @@
+export type PredictorType = "none" | "cmudict" | "gemini";

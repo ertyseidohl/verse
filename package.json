@@ -51,19 +51,25 @@
       "type": "object",
       "title": "Multi LSP configuration",
       "properties": {
-        "verseLanguageServer.enable": {
+        "verse.enable": {
           "scope": "resource",
           "type": "boolean",
           "default": true,
           "description": "Controls the enablement."
         },
-        "verseLanguageServer.options": {
+        "verse.options": {
           "scope": "resource",
           "type": "object",
           "default": {},
           "description": "Additional options."
         },
-        "verseLanguageServer.trace.server": {
+        "verse.predictorType": {
+          "type": "string",
+          "enum": ["cmudict", "gemini"],
+          "default": "cmudict",
+          "description": "Type of predictor to use"
+        },
+        "verse.trace.server": {
           "scope": "window",
           "type": "string",
           "enum": [

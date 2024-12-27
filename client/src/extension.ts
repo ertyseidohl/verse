@@ -16,6 +16,10 @@ import {
   VersionedTextDocumentIdentifier,
 } from "vscode-languageclient/node";
 
+export interface VerseSettings {
+  predictorType: "none" | "cmudict" | "gemini";
+}
+
 let languageClient: LanguageClient;
 const clients = new Map<string, LanguageClient>();
 
@@ -81,6 +85,15 @@ export function activate(context: ExtensionContext) {
           }
           return next(event);
         },
+        workspace: {
+          configuration: async () => {
+            const config = Workspace.getConfiguration('verse');
+            const settings: VerseSettings = {
+              predictorType: config.get('predictorType', 'none')
+            };
+            return [settings];
+          }
+        }
       },
     };
     languageClient = new LanguageClient(
@@ -103,9 +116,7 @@ export function activate(context: ExtensionContext) {
     ) {
       return;
     }
-    // if (change.contentChanges.length === 0) {
-    //   return;
-    // }
+
     console.log("Sending textDocument/didChange notification");
     try {
       languageClient.sendNotification("textDocument/didChange", {

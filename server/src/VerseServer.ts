@@ -14,25 +14,8 @@ import {
 import { TextDocument } from "vscode-languageserver-textdocument";
 import { VerseAnalyzer } from "./VerseAnalyzer";
 import { VerseValidator } from "./VerseValidator";
-import { VersePredictor } from "./VersePredictor";
-
-// The example settings
-interface DocumentSettings {
-  showAllErrors: boolean;
-  maxNumberOfProblems: number;
-  caching: CachingStrategy;
-}
-
-enum CachingStrategy {
-  eager,
-  lazy,
-}
-
-const DEFAULT_DOCUMENT_SETTINGS: DocumentSettings = {
-  showAllErrors: false,
-  maxNumberOfProblems: 1000,
-  caching: CachingStrategy.eager,
-};
+import { VersePredictorFactory } from "./predictors/VersePredictorFactory";
+import { DEFAULT_DOCUMENT_SETTINGS, DocumentSettings } from "./DocumentSettings";
 
 interface ClientSettings {
   hasConfigurationCapability: boolean;
@@ -50,18 +33,17 @@ const DEFAULT_CLIENT_SETTINGS = {
 
 export default class VerseServer {
   private clientSettings: ClientSettings;
-  private documentSettings: Map<string, Thenable<DocumentSettings>>;
+  private documentSettingsStore: Map<string, Thenable<DocumentSettings>>;
   private documents: TextDocuments<TextDocument>;
 
-  private verseAnalyzer:VerseAnalyzer;
-  private verseValidator:VerseValidator;
-  private versePredictor:VersePredictor;
+  private verseAnalyzer: VerseAnalyzer;
+  private verseValidator: VerseValidator;
 
-  private constructor(
-    private connection: Connection,
-  ) {
+  private versePredictorFactory = new VersePredictorFactory();
+
+  private constructor(private connection: Connection) {
     console.log("VerseServer constructor start");
-    this.documentSettings = new Map<string, Thenable<DocumentSettings>>();
+    this.documentSettingsStore = new Map<string, Thenable<DocumentSettings>>();
     this.clientSettings = { ...DEFAULT_CLIENT_SETTINGS };
 
     this.documents = new TextDocuments(TextDocument);
@@ -82,18 +64,19 @@ export default class VerseServer {
     return verseServer;
   }
 
-  private onInitialize(params: InitializeParams): InitializeResult {
+  private async onInitialize(
+    params: InitializeParams
+  ): Promise<InitializeResult> {
     const result = this.initializeClientCapabilities(params.capabilities);
 
     this.verseAnalyzer = new VerseAnalyzer(this.clientSettings);
     this.verseValidator = new VerseValidator(this.clientSettings);
-    this.versePredictor = new VersePredictor(this.clientSettings);
 
     this.documents.onDidChangeContent(this.onDidChangeContent.bind(this));
 
     // Only keep settings for open documents
     this.documents.onDidClose((e) => {
-      this.documentSettings.delete(e.document.uri);
+      this.documentSettingsStore.delete(e.document.uri);
     });
 
     // all feature related registrations
@@ -130,14 +113,17 @@ export default class VerseServer {
   private async onCompletion(
     textDocumentPosition: TextDocumentPositionParams
   ): Promise<CompletionItem[]> {
-    console.log("completion.onCompletion request");
     const document = this.documents.get(textDocumentPosition.textDocument.uri);
     if (!document) {
       console.log("!document");
       return [];
     }
 
-    return this.versePredictor.predict(textDocumentPosition, document);
+    const documentSettings = await this.getDocumentSettings(document.uri);
+    const versePredictor = await this.versePredictorFactory.get(
+      documentSettings
+    );
+    return versePredictor.predict(textDocumentPosition, document);
   }
 
   private async onDidChangeContent(change) {
@@ -155,7 +141,7 @@ export default class VerseServer {
   private async onDidChangeConfiguration(change) {
     if (this.clientSettings.hasConfigurationCapability) {
       // Reset all cached document settings
-      this.documentSettings.clear();
+      this.documentSettingsStore.clear();
     } else {
       this.clientSettings =
         change.settings.verseLanguageServer || DEFAULT_CLIENT_SETTINGS;
@@ -222,14 +208,16 @@ export default class VerseServer {
     if (!this.clientSettings.hasConfigurationCapability) {
       return DEFAULT_DOCUMENT_SETTINGS;
     }
-    let result = this.documentSettings.get(resource);
+    let result = this.documentSettingsStore.get(resource);
     if (!result) {
       result = this.connection.workspace.getConfiguration({
         scopeUri: resource,
         section: "verse",
       });
-      this.documentSettings.set(resource, result);
+      this.documentSettingsStore.set(resource, result);
     }
-    return result;
+    const r = await result; // DEBUG
+    console.log(r);
+    return r;
   }
 }
