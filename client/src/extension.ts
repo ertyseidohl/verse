@@ -18,6 +18,7 @@ import {
 
 export interface VerseSettings {
   predictorType: "none" | "cmudict" | "gemini";
+  geminiApiKey: string;
 }
 
 let languageClient: LanguageClient;
@@ -89,7 +90,8 @@ export function activate(context: ExtensionContext) {
           configuration: async () => {
             const config = Workspace.getConfiguration('verse');
             const settings: VerseSettings = {
-              predictorType: config.get('predictorType', 'none')
+              predictorType: config.get('predictorType', 'none'),
+              geminiApiKey: config.get('geminiApiKey', ''),
             };
             return [settings];
           }

@@ -69,6 +69,11 @@
           "default": "cmudict",
           "description": "Type of predictor to use"
         },
+        "verse.geminiApiKey": {
+          "type": "string",
+          "default": "",
+          "description": "API Key for Gemini LLM Autocomplete"
+        },
         "verse.trace.server": {
           "scope": "window",
           "type": "string",

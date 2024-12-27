@@ -241,14 +241,6 @@ export default class PredictorCMUDict extends VersePredictor{
     const prefix = lineText.slice(0, character);
     const suffix = lineText.slice(character);
 
-    console.log("Completion request", {
-      line,
-      character,
-      lineText,
-      prefix,
-      suffix,
-    });
-
     const recentLines: string[] = [
       lines[line - 3],
       lines[line - 2],
@@ -257,8 +249,6 @@ export default class PredictorCMUDict extends VersePredictor{
       .filter((l) => l)
       .map((l) => l.split(" ").slice(-1)[0])
       .filter((l) => l);
-
-    console.log("Recent Lines", recentLines);
 
     const rhymes = await Promise.all(
       recentLines.map((word) => this.rhymeDict.getRhymes(word))

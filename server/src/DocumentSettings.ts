@@ -10,6 +10,7 @@ export interface DocumentSettings {
   maxNumberOfProblems: number;
   caching: CachingStrategy;
   predictorType: PredictorType;
+  geminiApiKey: string;
 }
 
 export const DEFAULT_DOCUMENT_SETTINGS: DocumentSettings = {
@@ -17,4 +18,5 @@ export const DEFAULT_DOCUMENT_SETTINGS: DocumentSettings = {
   maxNumberOfProblems: 1000,
   caching: CachingStrategy.eager,
   predictorType: "none",
+  geminiApiKey: "",
 };
