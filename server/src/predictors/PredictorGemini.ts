@@ -85,10 +85,16 @@ export default class PredictorGemini extends VersePredictor {
     A student has provided you with a poem. The ten lines before where you need to work are:
 
 POEM>>>
+    ${lines.slice(line - 10, line - 1).join("\n")}
+<<<END POEM
+
+The start of the line that you are completing is:
+
+POEM>>>
     ${prefix}
 <<<END POEM
 
-    And the content following where you need to work is:
+    And the end of the line that you are completing is:
 
 POEM>>>
     ${suffix}
@@ -100,13 +106,13 @@ POEM>>>
 
     Please provide some possible completions for the student in JSON format.
 
-    For example, if the poem so far is "Roses are red, violets are blue," consider the following completions:
+    For example, if the poem so far is "Roses are red, violets are " consider the following completions:
 
 EXAMPLE>>>
     [
-      {completion: "sugar"},
-      {completion: "sugar is sweet"},
-      {completion: "sugar is sweet, and so are you"}
+      {completion: "blue"},
+      {completion: "true"},
+      {completion: "totally new"}
     ]
 <<<END EXAMPLE
 
@@ -123,8 +129,6 @@ Return: Array<Completion>
     const result = await model.generateContent(prompt);
 
     const responseText = result.response.text();
-
-    console.log("responseText", responseText);
 
     try {
       const responseObjects = JSON.parse(responseText);
