@@ -9,6 +9,8 @@ import {
   TextDocumentSyncKind,
   InitializeParams,
   InitializedParams,
+  CompletionContext,
+  CompletionTriggerKind,
 } from "vscode-languageserver/node";
 
 import { TextDocument } from "vscode-languageserver-textdocument";
@@ -42,7 +44,6 @@ export default class VerseServer {
   private versePredictorFactory = new VersePredictorFactory();
 
   private constructor(private connection: Connection) {
-    console.log("VerseServer constructor start");
     this.documentSettingsStore = new Map<string, Thenable<DocumentSettings>>();
     this.clientSettings = { ...DEFAULT_CLIENT_SETTINGS };
 
@@ -52,15 +53,10 @@ export default class VerseServer {
 
     connection.onInitialize(this.onInitialize.bind(this));
     connection.onInitialized(this.onInitialized.bind(this));
-    console.log("VerseServer constructor end");
   }
 
   public static async create(connection: Connection): Promise<VerseServer> {
-    console.log("VerseServer.create start");
-
     const verseServer = new VerseServer(connection);
-
-    console.log("VerseServer.create end");
     return verseServer;
   }
 
@@ -84,13 +80,10 @@ export default class VerseServer {
       this.onDidChangeConfiguration.bind(this)
     );
     this.connection.onCompletion(this.onCompletion.bind(this));
-    this.connection.onCompletionResolve(this.onCompletionResolve.bind(this));
-
     return result;
   }
 
   private onInitialized(_: InitializedParams): void {
-    console.log("Connection Initialized");
     if (this.clientSettings.hasConfigurationCapability) {
       // Register for all configuration changes.
       this.connection.client.register(DidChangeConfigurationNotification.type);
@@ -102,21 +95,20 @@ export default class VerseServer {
     }
   }
 
-  private async onCompletionResolve(
-    item: CompletionItem
-  ): Promise<CompletionItem> {
-    item.detail = "TODO detail";
-    item.documentation = "TODO documentation";
-    return item;
-  }
-
   private async onCompletion(
-    textDocumentPosition: TextDocumentPositionParams
+    textDocumentPosition: TextDocumentPositionParams,
+    context: CompletionContext
   ): Promise<CompletionItem[]> {
     const document = this.documents.get(textDocumentPosition.textDocument.uri);
     if (!document) {
       console.log("!document");
-      return [];
+      return null;
+    }
+
+    const triggerKind = context?.triggerKind || CompletionTriggerKind.Invoked;
+    console.log("triggerKind", triggerKind);
+    if (triggerKind !== CompletionTriggerKind.Invoked) {
+      return null;
     }
 
     const documentSettings = await this.getDocumentSettings(document.uri);
@@ -182,9 +174,8 @@ export default class VerseServer {
     const result: InitializeResult = {
       capabilities: {
         textDocumentSync: TextDocumentSyncKind.Incremental,
-        // Tell the client that this server supports code completion.
         completionProvider: {
-          resolveProvider: true,
+          resolveProvider: false,
         },
         diagnosticProvider: {
           interFileDependencies: false,

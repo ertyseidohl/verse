@@ -59,26 +59,54 @@ export default class PredictorGemini extends VersePredictor {
 
     const genAI = new GoogleGenerativeAI(this.settings.geminiApiKey);
 
-    const model = genAI.getGenerativeModel({
+    let startingLetterPrompt = "";
+
+    if (prefix[prefix.length - 1] !== " ") {
+      const lastWordSoFar = prefix.split(" ").slice(-1)[0];
+      startingLetterPrompt = `The last word of the poem so far is "${lastWordSoFar}". Start every possible completion with that prefix.`;
+    }
+
+    const analysisModel = genAI.getGenerativeModel({
+      model: "gemini-1.5-flash"
+    });
+
+    const analyzePrompt = `
+    Please analyze the following poem, indicating the rhyme scheme and meter,
+    as well as a three sentence synopsis of the poem's topic and tone:
+
+    ${text.slice(-1000)}
+    `;
+
+    const analysis = (await analysisModel.generateContent(analyzePrompt)).response.text();
+
+    const recentLines: string[] = [
+      lines[line - 3],
+      lines[line - 2],
+      lines[line - 1],
+    ]
+      .filter((l) => l)
+      .map((l) => l.split(" ").slice(-1)[0])
+      .filter((l) => l);
+
+    const rhymesPrompt = `
+Provide lists of rhymes for the following words: ${recentLines.join(", ")}.
+
+Return just the words that rhyme with each word, separated by commas. For example:
+
+    "cat: bat, hat, mat"
+
+Provide no other commentary or information.
+    `;
+
+    const rhymes = (await analysisModel.generateContent(rhymesPrompt)).response.text();
+
+    const completionsModel = genAI.getGenerativeModel({
       model: "gemini-1.5-flash",
       generationConfig: {
         responseMimeType: "application/json",
         responseSchema: schema,
       },
     });
-
-    let startingLetterPrompt = "";
-
-    console.log("prefix", prefix);
-    console.log("suffix", suffix);
-    console.log("lastChar", prefix[prefix.length - 1]);
-
-
-    if (prefix[prefix.length - 1] !== " ") {
-      const lastWordSoFar = prefix.split(" ").slice(-1)[0];
-      console.log("lastWordSoFar", lastWordSoFar);
-      startingLetterPrompt = `The last word of the poem so far is "${lastWordSoFar}". Start every possible completion with that prefix.`;
-    }
 
     const prompt = `You are an english teacher who is an expert in poetry.
 
@@ -106,17 +134,17 @@ POEM>>>
 
     Please provide some possible completions for the student in JSON format.
 
-    For example, if the poem so far is "Roses are red, violets are " consider the following completions:
+    Here is an analysis of the poem. The completions returned must match the rhyme scheme, topic, and meter given:
 
-EXAMPLE>>>
-    [
-      {completion: "blue"},
-      {completion: "true"},
-      {completion: "totally new"}
-    ]
-<<<END EXAMPLE
+ANALYSIS>>>
+    ${analysis}
+<<<END ANALYSIS
 
-    Provide only short completions, matching the topic, rhyme, and meter of the existing poem.
+    Here are lists of words that rhyme with the last words of the previous three lines of the poem:
+
+RHYMES>>>
+    ${rhymes}
+<<<END RHYMES
 
     Completions should be only one word, or a few words. Never more than enough to finish the current line.
 
@@ -126,7 +154,7 @@ Completion = {'completion': string}
 Return: Array<Completion>
     `;
 
-    const result = await model.generateContent(prompt);
+    const result = await completionsModel.generateContent(prompt);
 
     const responseText = result.response.text();
 
