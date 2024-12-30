@@ -157,7 +157,7 @@ export class RhymeDict {
               syllableCount,
               ...lastSyllables,
             ]
-          )
+          );
         } catch (err) {
           console.log("Error while processing line: " + line);
           throw err;

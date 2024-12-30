@@ -1,15 +1,1 @@
-{
-  "root": [
-    "./src/documentsettings.ts",
-    "./src/rhymedict.ts",
-    "./src/verseanalyzer.ts",
-    "./src/verseserver.ts",
-    "./src/server.ts",
-    "./src/predictors/predictorcmudict.ts",
-    "./src/predictors/predictorgemini.ts",
-    "./src/predictors/predictortype.ts",
-    "./src/predictors/versepredictor.ts",
-    "./src/predictors/versepredictorfactory.ts"
-  ],
-  "version": "5.7.2"
-}
+{"root":["./src/documentsettings.ts","./src/rhymedict.ts","./src/verseanalyzer.ts","./src/verseserver.ts","./src/server.ts","./src/predictors/predictorcmudict.ts","./src/predictors/predictorgemini.ts","./src/predictors/predictortype.ts","./src/predictors/versepredictor.ts","./src/predictors/versepredictorfactory.ts"],"version":"5.7.2"}
