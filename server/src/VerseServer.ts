@@ -11,11 +11,11 @@ import {
   InitializedParams,
   CompletionContext,
   CompletionTriggerKind,
+  TextDocumentChangeEvent,
 } from "vscode-languageserver/node";
 
 import { TextDocument } from "vscode-languageserver-textdocument";
 import { VerseAnalyzer } from "./VerseAnalyzer";
-import { VerseValidator } from "./VerseValidator";
 import { VersePredictorFactory } from "./predictors/VersePredictorFactory";
 import { DEFAULT_DOCUMENT_SETTINGS, DocumentSettings } from "./DocumentSettings";
 
@@ -39,7 +39,6 @@ export default class VerseServer {
   private documents: TextDocuments<TextDocument>;
 
   private verseAnalyzer: VerseAnalyzer;
-  private verseValidator: VerseValidator;
 
   private versePredictorFactory = new VersePredictorFactory();
 
@@ -66,7 +65,6 @@ export default class VerseServer {
     const result = this.initializeClientCapabilities(params.capabilities);
 
     this.verseAnalyzer = new VerseAnalyzer(this.clientSettings);
-    this.verseValidator = new VerseValidator(this.clientSettings);
 
     this.documents.onDidChangeContent(this.onDidChangeContent.bind(this));
 
@@ -106,7 +104,6 @@ export default class VerseServer {
     }
 
     const triggerKind = context?.triggerKind || CompletionTriggerKind.Invoked;
-    console.log("triggerKind", triggerKind);
     if (triggerKind !== CompletionTriggerKind.Invoked) {
       return null;
     }
@@ -118,16 +115,20 @@ export default class VerseServer {
     return versePredictor.predict(textDocumentPosition, document);
   }
 
-  private async onDidChangeContent(change) {
-    const diagnostics = await this.verseValidator.validate(change.document);
+  private async sendDiagnostics(document: TextDocument) {
+    const diagnostics = await this.verseAnalyzer.analyze(document);
 
     if (diagnostics.length > 0) {
       this.connection.sendDiagnostics({
-        uri: change.document.uri,
-        version: change.document.version,
+        uri: document.uri,
+        version: document.version,
         diagnostics: diagnostics,
       });
     }
+  }
+
+  private async onDidChangeContent(change: TextDocumentChangeEvent<TextDocument>) {
+    this.sendDiagnostics(change.document);
   }
 
   private async onDidChangeConfiguration(change) {
@@ -143,11 +144,7 @@ export default class VerseServer {
     } else {
       // Manually refresh diagnostics for all open documents
       this.documents.all().forEach(async (document) => {
-        const diagnostics = await this.verseValidator.validate(document);
-        this.connection.sendDiagnostics({
-          uri: document.uri,
-          diagnostics,
-        });
+        this.sendDiagnostics(document);
       });
     }
   }
@@ -207,8 +204,6 @@ export default class VerseServer {
       });
       this.documentSettingsStore.set(resource, result);
     }
-    const r = await result; // DEBUG
-    console.log(r);
-    return r;
+    return result;
   }
 }
