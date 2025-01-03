@@ -4,6 +4,4 @@ node_modules
 .vscode-test/
 *.vsix
 .env
-.vscode/
 .vscode-test.mjs
-.vscodeignore
