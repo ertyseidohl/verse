@@ -12,6 +12,11 @@ class Phoneme {
   toString(): string {
     return `${this.text}${this.stress}`;
   }
+
+  get isVowelSound(): boolean {
+    // Vowel sounds end with a number to indicate stress
+    return isNaN(parseInt(this.text[this.text.length - 1]));
+  }
 }
 
 class Word {
@@ -23,6 +28,10 @@ class Word {
 
   public get length(): number {
     return this.text.length;
+  }
+
+  public get syllables(): number {
+    return this.phonemes.filter((p) => p.isVowelSound).length;
   }
 }
 
@@ -53,6 +62,10 @@ class Line {
 
   public toString(): string {
     return this.textNodes.map((t) => t.toString()).join(" ");
+  }
+
+  public get syllables(): number {
+    return this.words.map((w) => w.syllables).reduce((a, b) => a + b, 0);
   }
 }
 

@@ -51,18 +51,6 @@
       "type": "object",
       "title": "Multi LSP configuration",
       "properties": {
-        "verse.enable": {
-          "scope": "resource",
-          "type": "boolean",
-          "default": true,
-          "description": "Controls the enablement."
-        },
-        "verse.options": {
-          "scope": "resource",
-          "type": "object",
-          "default": {},
-          "description": "Additional options."
-        },
         "verse.predictorType": {
           "type": "string",
           "enum": ["cmudict", "gemini"],
